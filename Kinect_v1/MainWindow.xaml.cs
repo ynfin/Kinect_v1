@@ -19,31 +19,59 @@ namespace Kinect_v1
 {
     public partial class MainWindow : Window
     {
-
         private const int MapDepthToByte = 8000 / 256;
+        private const float InfraredSourceValueMaximum = (float)ushort.MaxValue;
+        private const float InfraredSourceScale = 0.75f;
+        private const float InfraredOutputValueMinimum = 0.01f;
+        private const float InfraredOutputValueMaximum = 1.0f;
+
+
         private KinectSensor kinectSensor = null;
+
         private DepthFrameReader depthFrameReader = null;
+        private ColorFrameReader colorFrameReader = null;
+        private InfraredFrameReader infraredFrameReader = null;
+
         private FrameDescription depthFrameDescription = null;
+        private FrameDescription colorFrameDescription = null;
+        private FrameDescription infraredFrameDescription = null;
+
         private WriteableBitmap depthBitmap = null;
+        private WriteableBitmap colorBitmap = null;
+        private WriteableBitmap infraredBitmap = null;
+
         private byte[] depthPixels = null;
 
         public MainWindow()
         {
             this.kinectSensor = KinectSensor.GetDefault();
+
+            // streams
             this.depthFrameReader = this.kinectSensor.DepthFrameSource.OpenReader();
+            this.colorFrameReader = this.kinectSensor.ColorFrameSource.OpenReader();
+            this.infraredFrameReader = this.kinectSensor.InfraredFrameSource.OpenReader();
 
-            // wire handler for frame arrival
+            // handlers
             this.depthFrameReader.FrameArrived += this.Reader_FrameArrived;
+            this.colorFrameReader.FrameArrived += this.Reader_ColorFrameArrived;
+            this.infraredFrameReader.FrameArrived += this.Reader_InfraredFrameArrived;
 
-            this.depthFrameDescription = this.kinectSensor.DepthFrameSource.FrameDescription;   // get FrameDescription from DepthFrameSource
-            this.depthPixels = new byte[this.depthFrameDescription.Width * this.depthFrameDescription.Height];  // allocate space to put the pixels being received and converted
-            this.depthBitmap = new WriteableBitmap(this.depthFrameDescription.Width, this.depthFrameDescription.Height, 96.0, 96.0, PixelFormats.Gray8, null);  // create the bitmap to display
-            this.kinectSensor.Open();   // open the sensor
+            //infrared
+            this.infraredFrameDescription = this.kinectSensor.InfraredFrameSource.FrameDescription;
+            this.infraredBitmap = new WriteableBitmap(this.infraredFrameDescription.Width, this.infraredFrameDescription.Height, 96.0, 96.0, PixelFormats.Gray32Float, null);
 
-            // use the window object as the view model in this simple example
+            //color
+            this.colorFrameDescription = this.kinectSensor.ColorFrameSource.CreateFrameDescription(ColorImageFormat.Bgra);
+            this.colorBitmap = new WriteableBitmap(colorFrameDescription.Width, colorFrameDescription.Height, 96.0, 96.0, PixelFormats.Bgr32, null);
+
+            // depth
+            this.depthFrameDescription = this.kinectSensor.DepthFrameSource.FrameDescription;
+            this.depthPixels = new byte[this.depthFrameDescription.Width * this.depthFrameDescription.Height];
+            this.depthBitmap = new WriteableBitmap(this.depthFrameDescription.Width, this.depthFrameDescription.Height, 96.0, 96.0, PixelFormats.Gray8, null);
+            
+            // general
+            this.kinectSensor.Open();
             this.DataContext = this;
-
-            // initialize the components (controls) of the window
             this.InitializeComponent();
            
         }
@@ -56,20 +84,15 @@ namespace Kinect_v1
             {
                 if (depthFrame != null)
                 {
-                    // the fastest way to process the body index data is to directly access 
-                    // the underlying buffer
+                    // the fastest way to process the body index data is to directly access the underlying buffer
                     using (Microsoft.Kinect.KinectBuffer depthBuffer = depthFrame.LockImageBuffer())
                     {
                         // verify data and write the color data to the display bitmap
                         if (((this.depthFrameDescription.Width * this.depthFrameDescription.Height) == (depthBuffer.Size / this.depthFrameDescription.BytesPerPixel)) &&
                             (this.depthFrameDescription.Width == this.depthBitmap.PixelWidth) && (this.depthFrameDescription.Height == this.depthBitmap.PixelHeight))
                         {
-                            // Note: In order to see the full range of depth (including the less reliable far field depth)
-                            // we are setting maxDepth to the extreme potential depth threshold
                             ushort maxDepth = ushort.MaxValue;
-
-                            // If you wish to filter by reliable depth distance, uncomment the following line:
-                            //// maxDepth = depthFrame.DepthMaxReliableDistance
+                            //maxDepth = depthFrame.DepthMaxReliableDistance;
 
                             this.ProcessDepthFrameData(depthBuffer.UnderlyingBuffer, depthBuffer.Size, depthFrame.DepthMinReliableDistance, maxDepth);
                             depthFrameProcessed = true;
@@ -84,6 +107,83 @@ namespace Kinect_v1
             }
         }
 
+        private void Reader_ColorFrameArrived(object sender, ColorFrameArrivedEventArgs e)
+        {
+            // ColorFrame is IDisposable
+            using (ColorFrame colorFrame = e.FrameReference.AcquireFrame())
+            {
+                if (colorFrame != null)
+                {
+                    FrameDescription colorFrameDescription = colorFrame.FrameDescription;
+
+                    using (KinectBuffer colorBuffer = colorFrame.LockRawImageBuffer())
+                    {
+                        this.colorBitmap.Lock();
+
+                        // verify data and write the new color frame data to the display bitmap
+                        if ((colorFrameDescription.Width == this.colorBitmap.PixelWidth) && (colorFrameDescription.Height == this.colorBitmap.PixelHeight))
+                        {
+                            colorFrame.CopyConvertedFrameDataToIntPtr(
+                                this.colorBitmap.BackBuffer,
+                                (uint)(colorFrameDescription.Width * colorFrameDescription.Height * 4),
+                                ColorImageFormat.Bgra);
+
+                            this.colorBitmap.AddDirtyRect(new Int32Rect(0, 0, this.colorBitmap.PixelWidth, this.colorBitmap.PixelHeight));
+                        }
+
+                        this.colorBitmap.Unlock();
+                    }
+                }
+            }
+        }
+
+        private void Reader_InfraredFrameArrived(object sender, InfraredFrameArrivedEventArgs e)
+        {
+            // InfraredFrame is IDisposable
+            using (InfraredFrame infraredFrame = e.FrameReference.AcquireFrame())
+            {
+                if (infraredFrame != null)
+                {
+                    // the fastest way to process the infrared frame data is to directly access 
+                    // the underlying buffer
+                    using (Microsoft.Kinect.KinectBuffer infraredBuffer = infraredFrame.LockImageBuffer())
+                    {
+                        // verify data and write the new infrared frame data to the display bitmap
+                        if (((this.infraredFrameDescription.Width * this.infraredFrameDescription.Height) == (infraredBuffer.Size / this.infraredFrameDescription.BytesPerPixel)) &&
+                            (this.infraredFrameDescription.Width == this.infraredBitmap.PixelWidth) && (this.infraredFrameDescription.Height == this.infraredBitmap.PixelHeight))
+                        {
+                            this.ProcessInfraredFrameData(infraredBuffer.UnderlyingBuffer, infraredBuffer.Size);
+                        }
+                    }
+                }
+            }
+        }
+
+        private unsafe void ProcessInfraredFrameData(IntPtr infraredFrameData, uint infraredFrameDataSize)
+        {
+            // infrared frame data is a 16 bit value
+            ushort* frameData = (ushort*)infraredFrameData;
+
+            // lock the target bitmap
+            this.infraredBitmap.Lock();
+
+            // get the pointer to the bitmap's back buffer
+            float* backBuffer = (float*)this.infraredBitmap.BackBuffer;
+
+            // process the infrared data
+            for (int i = 0; i < (int)(infraredFrameDataSize / this.infraredFrameDescription.BytesPerPixel); ++i)
+            {
+                // since we are displaying the image as a normalized grey scale image, we need to convert from
+                // the ushort data (as provided by the InfraredFrame) to a value from [InfraredOutputValueMinimum, InfraredOutputValueMaximum]
+                backBuffer[i] = Math.Min(InfraredOutputValueMaximum, (((float)frameData[i] / InfraredSourceValueMaximum * InfraredSourceScale) * (1.0f - InfraredOutputValueMinimum)) + InfraredOutputValueMinimum);
+            }
+
+            // mark the entire bitmap as needing to be drawn
+            this.infraredBitmap.AddDirtyRect(new Int32Rect(0, 0, this.infraredBitmap.PixelWidth, this.infraredBitmap.PixelHeight));
+
+            // unlock the bitmap
+            this.infraredBitmap.Unlock();
+        }
 
         private unsafe void ProcessDepthFrameData(IntPtr depthFrameData, uint depthFrameDataSize, ushort minDepth, ushort maxDepth)
         {
@@ -96,7 +196,6 @@ namespace Kinect_v1
             }
         }
 
-
         private void RenderDepthPixels()
         {
             this.depthBitmap.WritePixels(
@@ -107,9 +206,13 @@ namespace Kinect_v1
         }
 
 
+
+
         public ImageSource DepthSource
         {
-            get{return this.depthBitmap;}
+            //get{return this.depthBitmap;}
+            get{return this.colorBitmap;}
+            //get{return this.infraredBitmap;}
         }
 
         private void MainWindow_Closing(object sender, CancelEventArgs e)
@@ -118,6 +221,18 @@ namespace Kinect_v1
             {
                 this.depthFrameReader.Dispose();
                 this.depthFrameReader = null;
+            }
+
+            if (this.colorFrameReader != null)
+            {
+                this.colorFrameReader.Dispose();
+                this.colorFrameReader = null;
+            }
+
+            if (this.infraredFrameReader != null)
+            {
+                this.infraredFrameReader.Dispose();
+                this.infraredFrameReader = null;
             }
 
             if (this.kinectSensor != null)
