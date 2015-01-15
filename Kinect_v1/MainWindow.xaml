@@ -1,18 +1,25 @@
 ﻿<Window x:Class="Kinect_v1.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="MainWindow" Height="750" Width="800"
-         Closing="MainWindow_Closing">
+        Title="MainWindow" Height="Auto" Width="800"
+        SizeToContent="Height"
+        Closing="MainWindow_Closing">
+        
 
     <Grid x:Name="img" Margin="0,0,0,0" Background="White">
         <Grid.RowDefinitions>
-            <RowDefinition Height="30"/>
+            <RowDefinition Height="32"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <Button Content="Button" Width="75" Height="20" Grid.Row="0" BorderBrush="#FF848484" Background="#FFF9F9F9"/>
+        <StackPanel Orientation="Horizontal">
+            <Button Content="Color" Width="75" Height="20" Grid.Row="0" BorderBrush="#FF848484" Background="#FFF9F9F9" HorizontalAlignment="Left" Margin="5,0" Click="Color_Click"/>
+            <Button Content="IR" Width="75" Height="20" Grid.Row="0" BorderBrush="#FF848484" Background="#FFF9F9F9" HorizontalAlignment="Left" Margin="5,0" Click="IR_Click"/>
+            <Button Content="Depth" Width="75" Height="20" Grid.Row="0" BorderBrush="#FF848484" Background="#FFF9F9F9" HorizontalAlignment="Left" Margin="5,0" Click="Depth_Click"/>
+        </StackPanel>
+        
         <Viewbox HorizontalAlignment="Center" Grid.Row="1">
-            <Image Source="{Binding DepthSource}" Stretch="UniformToFill" OpacityMask="#FFAA6565" MinHeight="26" MinWidth="26" />
+            <Image x:Name="displayScreen" Source="{Binding DepthSource}" Stretch="UniformToFill" OpacityMask="#FFAA6565" MinHeight="26" MinWidth="26"/>
         </Viewbox>
-        <Separator HorizontalAlignment="Stretch" Height="1" VerticalAlignment="Bottom" Grid.Row="0"/>
+        <Separator HorizontalAlignment="Stretch" Height="1" VerticalAlignment="Bottom" Grid.Row="0" Margin="0,1"/>
     </Grid>
 </Window>

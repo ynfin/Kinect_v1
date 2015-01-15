@@ -40,6 +40,9 @@ namespace Kinect_v1
         private WriteableBitmap colorBitmap = null;
         private WriteableBitmap infraredBitmap = null;
 
+        enum DisplaySource{ColorStream,DepthStream,InfraredStream};
+        DisplaySource source = DisplaySource.DepthStream;
+
         private byte[] depthPixels = null;
 
         public MainWindow()
@@ -73,6 +76,8 @@ namespace Kinect_v1
             this.kinectSensor.Open();
             this.DataContext = this;
             this.InitializeComponent();
+
+
            
         }
 
@@ -211,8 +216,18 @@ namespace Kinect_v1
         public ImageSource DepthSource
         {
             //get{return this.depthBitmap;}
-            get{return this.colorBitmap;}
+            //get{return this.colorBitmap;}
             //get{return this.infraredBitmap;}
+            get
+            {
+                if (source == DisplaySource.InfraredStream)
+                    return this.infraredBitmap;
+                else if (source == DisplaySource.DepthStream)
+                    return this.depthBitmap;
+                else
+                    return this.colorBitmap;
+            }
+            
         }
 
         private void MainWindow_Closing(object sender, CancelEventArgs e)
@@ -240,6 +255,27 @@ namespace Kinect_v1
                 this.kinectSensor.Close();
                 this.kinectSensor = null;
             }
+        }
+
+        private void Color_Click(object sender, RoutedEventArgs e)
+        {
+            this.source = DisplaySource.ColorStream;
+            BindingOperations.GetBindingExpressionBase(displayScreen, Image.SourceProperty).UpdateTarget();
+            System.Diagnostics.Debug.WriteLine("Color showing");
+        }
+
+        private void IR_Click(object sender, RoutedEventArgs e)
+        {
+            this.source = DisplaySource.InfraredStream;
+            BindingOperations.GetBindingExpressionBase(displayScreen, Image.SourceProperty).UpdateTarget();
+            System.Diagnostics.Debug.WriteLine("IR showing");
+        }
+
+        private void Depth_Click(object sender, RoutedEventArgs e)
+        {
+            this.source = DisplaySource.DepthStream;
+            BindingOperations.GetBindingExpressionBase(displayScreen, Image.SourceProperty).UpdateTarget();
+            System.Diagnostics.Debug.WriteLine("Depth showing");
         }
     }
 }
