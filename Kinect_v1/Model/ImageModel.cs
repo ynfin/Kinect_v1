@@ -23,18 +23,24 @@ namespace Kinect_v1.Model
         Image<Gray, Byte> DepthImage = null;
         Image<Gray, Byte> InfraredImage = null;
 
-        Hsv lowerColorThreshold = new Hsv(10, 10, 10);
+        Hsv lowerColorThreshold = new Hsv(100, 100, 100);
         Hsv upperColorThreshold = new Hsv(200, 200, 200);
 
         public Image<Hsv,Byte> BitmapToColorImage(WriteableBitmap inputFrame)
         {
-            BitmapEncoder encoder = new BmpBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(inputFrame));
-            MemoryStream ms = new MemoryStream();
-            encoder.Save(ms);
-            return new Image<Hsv, Byte>(new Bitmap(ms));
+            Bitmap bmp;
+            using (MemoryStream bitmapstream = new MemoryStream())
+            {
+                BitmapEncoder encoder = new BmpBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create((BitmapSource)inputFrame));
+                encoder.Save(bitmapstream);
+                bmp = new Bitmap(bitmapstream);
+                return new Image<Hsv, Byte>(bmp);
+            }
+            //return new Image<Hsv, Byte>(bmp);
         }
 
+  
         public Image<Gray, Byte> BitmapToGrayscaleImage(WriteableBitmap inputFrame)
         {
             BitmapEncoder encoder = new BmpBitmapEncoder();
@@ -44,13 +50,7 @@ namespace Kinect_v1.Model
             return new Image<Gray, Byte>(new Bitmap(ms));
         }
 
-        public void setColorFrame(WriteableBitmap rawInput)
-        {
-            System.Diagnostics.Debug.WriteLine("color is started");
-            this.ColorImage = BitmapToColorImage(rawInput);
-            System.Diagnostics.Debug.WriteLine("color is set");
-        }
-
+       
         public void setDepthFrame(WriteableBitmap rawInput)
         {
             this.DepthImage = BitmapToGrayscaleImage(rawInput);
@@ -69,12 +69,15 @@ namespace Kinect_v1.Model
 
         public void processColorImage()
         {
-            this.ColorProcessed = this.ColorImage.InRange(this.lowerColorThreshold, this.upperColorThreshold);
-            this.ColorProcessed = this.ColorProcessed.Dilate(5);
-            this.ColorProcessed = this.ColorProcessed.Erode(5);
+            //this.ColorProcessed = this.ColorImage.InRange(this.lowerColorThreshold, this.upperColorThreshold);
+            //this.ColorProcessed = this.ColorProcessed.Dilate(5);
+            //this.ColorProcessed = this.ColorProcessed.Erode(5);
 
-            MCvMoments moment = this.ColorProcessed.GetMoments(true);
-            this.gravityCenter = new PointF(((float)moment.m10 / (float)moment.m00),(float)(moment.m01 / (float)moment.m00));
+            this.ColorProcessed = ColorImage.Convert<Gray, Byte>();
+            this.ColorProcessed.ToBitmap().Save(@"C:\Users\Kinect\Pictures\fromImageModel.bmp");
+            System.Diagnostics.Debug.WriteLine("saved");
+            //MCvMoments moment = this.ColorProcessed.GetMoments(true);
+            //this.gravityCenter = new PointF(((float)moment.m10 / (float)moment.m00),(float)(moment.m01 / (float)moment.m00));
         }
 
         public Bitmap getBinaryBitmap()
@@ -82,8 +85,31 @@ namespace Kinect_v1.Model
             return this.ColorProcessed.ToBitmap();
         }
 
+        public Bitmap getColorBitmap()
+        {
+            return this.ColorImage.ToBitmap();
+        }
 
- 
+        public void recieveWritableColorBitmap(WriteableBitmap inWBMP)
+        {
+            BitmapEncoder encoder = new BmpBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(inWBMP));
+           
+            using (MemoryStream ms = new MemoryStream())
+            {
+                encoder.Save(ms);
+                Bitmap b=new Bitmap(ms);
+                ColorImage = new Image<Hsv, Byte>(b);
+            }     
+        }
+
+        public void setColorFrame(WriteableBitmap rawInput)
+        {
+            System.Diagnostics.Debug.WriteLine("color is started");
+            this.ColorImage = BitmapToColorImage(rawInput);
+            System.Diagnostics.Debug.WriteLine("color is set");
+        }
+
 
     }
 }

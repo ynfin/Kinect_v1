@@ -41,7 +41,12 @@ namespace Kinect_v1
         private WriteableBitmap depthBitmap = null;
         private WriteableBitmap colorBitmap = null;
         private WriteableBitmap infraredBitmap = null;
+        private WriteableBitmap binaryWBitmap = null;
+
         private Bitmap binaryBitmap = null;
+        private ImageSource binaryImageSource = null;
+
+        private int framesounter = 0;
 
         enum DisplaySource{ColorStream,DepthStream,InfraredStream,BinaryStream};
         DisplaySource source = DisplaySource.ColorStream;
@@ -75,6 +80,9 @@ namespace Kinect_v1
             this.depthPixels = new byte[this.depthFrameDescription.Width * this.depthFrameDescription.Height];
             this.depthBitmap = new WriteableBitmap(this.depthFrameDescription.Width, this.depthFrameDescription.Height, 96.0, 96.0, PixelFormats.Gray8, null);
             
+            // processed
+            this.binaryWBitmap = new WriteableBitmap(this.depthFrameDescription.Width, this.depthFrameDescription.Height, 96.0, 96.0, PixelFormats.Gray8, null);
+
             // general
             this.kinectSensor.Open();
             this.DataContext = this;
@@ -138,14 +146,23 @@ namespace Kinect_v1
 
                             this.colorBitmap.AddDirtyRect(new Int32Rect(0, 0, this.colorBitmap.PixelWidth, this.colorBitmap.PixelHeight));
 
-                            // plug bitmap into imagemodel
-                            KinectImageModel_1.setColorFrame(this.colorBitmap);
-                            //KinectImageModel_1.triggerProcessing();
-                            //binaryBitmap = KinectImageModel_1.getBinaryBitmap();
-                            
                         }
-
                         this.colorBitmap.Unlock();
+
+                        framesounter++;
+                        if (framesounter > 100)
+                        {
+                            
+                            System.Diagnostics.Debug.WriteLine("Color Ready");
+                            KinectImageModel_1.recieveWritableColorBitmap(this.colorBitmap);
+                            KinectImageModel_1.triggerProcessing();
+                            binaryBitmap = KinectImageModel_1.getColorBitmap();
+                            
+                            
+                            
+                            framesounter = 0;
+                        }
+                        
                     }
                 }
             }
@@ -219,7 +236,12 @@ namespace Kinect_v1
                 0);
         }
 
-
+        private static WriteableBitmap ImageSourceFromBitmap(Bitmap bmp)
+        {
+            System.Windows.Media.Imaging.BitmapSource b = System.Windows.Interop.Imaging.CreateBitmapSourceFromHBitmap(bmp.GetHbitmap(), IntPtr.Zero, System.Windows.Int32Rect.Empty, BitmapSizeOptions.FromWidthAndHeight(bmp.Width, bmp.Height));
+            WriteableBitmap wb = new WriteableBitmap(b);
+            return wb;
+        }
 
 
         public ImageSource DepthSource
@@ -233,7 +255,7 @@ namespace Kinect_v1
                     return this.depthBitmap;
 
                 else if (source == DisplaySource.BinaryStream)
-                    return this.infraredBitmap;
+                    return binaryImageSource;
                 else
                     return this.colorBitmap;
             }       
