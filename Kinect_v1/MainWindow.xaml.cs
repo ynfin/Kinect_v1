@@ -14,6 +14,7 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.ComponentModel;
 using Microsoft.Kinect;
+using System.Drawing;
 
 namespace Kinect_v1
 {
@@ -25,6 +26,7 @@ namespace Kinect_v1
         private const float InfraredOutputValueMinimum = 0.01f;
         private const float InfraredOutputValueMaximum = 1.0f;
 
+        Model.ImageModel KinectImageModel_1 = new Model.ImageModel();
 
         private KinectSensor kinectSensor = null;
 
@@ -39,9 +41,10 @@ namespace Kinect_v1
         private WriteableBitmap depthBitmap = null;
         private WriteableBitmap colorBitmap = null;
         private WriteableBitmap infraredBitmap = null;
+        private Bitmap binaryBitmap = null;
 
-        enum DisplaySource{ColorStream,DepthStream,InfraredStream};
-        DisplaySource source = DisplaySource.DepthStream;
+        enum DisplaySource{ColorStream,DepthStream,InfraredStream,BinaryStream};
+        DisplaySource source = DisplaySource.ColorStream;
 
         private byte[] depthPixels = null;
 
@@ -134,6 +137,12 @@ namespace Kinect_v1
                                 ColorImageFormat.Bgra);
 
                             this.colorBitmap.AddDirtyRect(new Int32Rect(0, 0, this.colorBitmap.PixelWidth, this.colorBitmap.PixelHeight));
+
+                            // plug bitmap into imagemodel
+                            KinectImageModel_1.setColorFrame(this.colorBitmap);
+                            //KinectImageModel_1.triggerProcessing();
+                            //binaryBitmap = KinectImageModel_1.getBinaryBitmap();
+                            
                         }
 
                         this.colorBitmap.Unlock();
@@ -215,19 +224,19 @@ namespace Kinect_v1
 
         public ImageSource DepthSource
         {
-            //get{return this.depthBitmap;}
-            //get{return this.colorBitmap;}
-            //get{return this.infraredBitmap;}
             get
             {
                 if (source == DisplaySource.InfraredStream)
                     return this.infraredBitmap;
+
                 else if (source == DisplaySource.DepthStream)
                     return this.depthBitmap;
+
+                else if (source == DisplaySource.BinaryStream)
+                    return this.infraredBitmap;
                 else
                     return this.colorBitmap;
-            }
-            
+            }       
         }
 
         private void MainWindow_Closing(object sender, CancelEventArgs e)
@@ -260,22 +269,25 @@ namespace Kinect_v1
         private void Color_Click(object sender, RoutedEventArgs e)
         {
             this.source = DisplaySource.ColorStream;
-            BindingOperations.GetBindingExpressionBase(displayScreen, Image.SourceProperty).UpdateTarget();
-            System.Diagnostics.Debug.WriteLine("Color showing");
+            BindingOperations.GetBindingExpressionBase(displayScreen, System.Windows.Controls.Image.SourceProperty).UpdateTarget();
         }
 
         private void IR_Click(object sender, RoutedEventArgs e)
         {
             this.source = DisplaySource.InfraredStream;
-            BindingOperations.GetBindingExpressionBase(displayScreen, Image.SourceProperty).UpdateTarget();
-            System.Diagnostics.Debug.WriteLine("IR showing");
+            BindingOperations.GetBindingExpressionBase(displayScreen, System.Windows.Controls.Image.SourceProperty).UpdateTarget();
         }
 
         private void Depth_Click(object sender, RoutedEventArgs e)
         {
             this.source = DisplaySource.DepthStream;
-            BindingOperations.GetBindingExpressionBase(displayScreen, Image.SourceProperty).UpdateTarget();
-            System.Diagnostics.Debug.WriteLine("Depth showing");
+            BindingOperations.GetBindingExpressionBase(displayScreen, System.Windows.Controls.Image.SourceProperty).UpdateTarget();
+        }
+
+        private void Binary_Click(object sender, RoutedEventArgs e)
+        {
+            this.source = DisplaySource.BinaryStream;
+            BindingOperations.GetBindingExpressionBase(displayScreen, System.Windows.Controls.Image.SourceProperty).UpdateTarget();
         }
     }
 }

@@ -15,6 +15,7 @@
             <Button Content="Color" Width="75" Height="20" Grid.Row="0" BorderBrush="#FF848484" Background="#FFF9F9F9" HorizontalAlignment="Left" Margin="5,0" Click="Color_Click"/>
             <Button Content="IR" Width="75" Height="20" Grid.Row="0" BorderBrush="#FF848484" Background="#FFF9F9F9" HorizontalAlignment="Left" Margin="5,0" Click="IR_Click"/>
             <Button Content="Depth" Width="75" Height="20" Grid.Row="0" BorderBrush="#FF848484" Background="#FFF9F9F9" HorizontalAlignment="Left" Margin="5,0" Click="Depth_Click"/>
+            <Button Content="Binary" Width="75" Height="20" Grid.Row="0" BorderBrush="#FF848484" Background="#FFF9F9F9" HorizontalAlignment="Left" Margin="5,0" Click="Binary_Click"/>
         </StackPanel>
         
         <Viewbox HorizontalAlignment="Center" Grid.Row="1">
