@@ -15,6 +15,8 @@ using System.Windows.Shapes;
 using System.ComponentModel;
 using Microsoft.Kinect;
 using System.Drawing;
+using System.IO;
+using System.Threading;
 
 namespace Kinect_v1
 {
@@ -43,8 +45,14 @@ namespace Kinect_v1
         private WriteableBitmap infraredBitmap = null;
         private WriteableBitmap binaryWBitmap = null;
 
+        private WriteableBitmap binaryBitmap2 = null;
+
         private Bitmap binaryBitmap = null;
         private ImageSource binaryImageSource = null;
+
+        // threads
+        Thread thread;
+        Action action;
 
         private int framesounter = 0;
 
@@ -82,13 +90,16 @@ namespace Kinect_v1
             
             // processed
             this.binaryWBitmap = new WriteableBitmap(this.depthFrameDescription.Width, this.depthFrameDescription.Height, 96.0, 96.0, PixelFormats.Gray8, null);
+            this.binaryBitmap2 = new WriteableBitmap(this.depthFrameDescription.Width, this.depthFrameDescription.Height, 96.0, 96.0, PixelFormats.Gray8, null);
 
+            
+            
             // general
             this.kinectSensor.Open();
             this.DataContext = this;
             this.InitializeComponent();
 
-
+           
            
         }
 
@@ -123,6 +134,7 @@ namespace Kinect_v1
             }
         }
 
+
         private void Reader_ColorFrameArrived(object sender, ColorFrameArrivedEventArgs e)
         {
             // ColorFrame is IDisposable
@@ -145,20 +157,29 @@ namespace Kinect_v1
                                 ColorImageFormat.Bgra);
 
                             this.colorBitmap.AddDirtyRect(new Int32Rect(0, 0, this.colorBitmap.PixelWidth, this.colorBitmap.PixelHeight));
-
                         }
+
+                     
                         this.colorBitmap.Unlock();
 
+                        binaryBitmap2 = colorBitmap.Clone();
+
                         framesounter++;
+
+                        thread = new Thread(() => saveBitmap(this.binaryBitmap2, framesounter));
+                        thread.Start();
+                        thread.Priority = ThreadPriority.Highest;
+
+
+
+
                         if (framesounter > 100)
                         {
                             
-                            System.Diagnostics.Debug.WriteLine("Color Ready");
-                            KinectImageModel_1.recieveWritableColorBitmap(this.colorBitmap);
-                            KinectImageModel_1.triggerProcessing();
-                            binaryBitmap = KinectImageModel_1.getColorBitmap();
-                            
-                            
+                            //System.Diagnostics.Debug.WriteLine("Color Ready");
+                            //KinectImageModel_1.recieveWritableColorBitmap(this.colorBitmap);
+                            //KinectImageModel_1.triggerProcessing();
+                            //binaryBitmap = KinectImageModel_1.getColorBitmap();   
                             
                             framesounter = 0;
                         }
@@ -311,5 +332,29 @@ namespace Kinect_v1
             this.source = DisplaySource.BinaryStream;
             BindingOperations.GetBindingExpressionBase(displayScreen, System.Windows.Controls.Image.SourceProperty).UpdateTarget();
         }
+
+
+
+
+        public void saveBitmap(WriteableBitmap bmp, int framecount)
+        {
+            string filename = @"C:\Users\Kinect\Pictures\pic" + framecount + ".png";
+
+            if (filename != string.Empty)
+            {
+                using (FileStream stream = new FileStream(filename, FileMode.Create))
+                {
+                    PngBitmapEncoder encoder = new PngBitmapEncoder();
+                    encoder.Frames.Add(BitmapFrame.Create(bmp));
+                    encoder.Save(stream);
+                    stream.Close();
+                    System.Diagnostics.Debug.WriteLine("Thread ran!");
+                }
+            }
+        }
+    
+        
+    
+    
     }
 }

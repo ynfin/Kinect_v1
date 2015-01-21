@@ -109,7 +109,5 @@ namespace Kinect_v1.Model
             this.ColorImage = BitmapToColorImage(rawInput);
             System.Diagnostics.Debug.WriteLine("color is set");
         }
-
-
     }
 }
