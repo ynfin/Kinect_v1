@@ -6,20 +6,26 @@
         Closing="MainWindow_Closing">
         
 
-    <Grid x:Name="img" Margin="0,0,0,0" Background="White">
+    <Grid x:Name="Img" Margin="0,0,0,0" Background="White">
         <Grid.RowDefinitions>
             <RowDefinition Height="32"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <StackPanel Orientation="Horizontal">
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
             <Button Content="Color" Width="75" Height="20" Grid.Row="0" BorderBrush="#FF848484" Background="#FFF9F9F9" HorizontalAlignment="Left" Margin="5,0" Click="Color_Click"/>
             <Button Content="IR" Width="75" Height="20" Grid.Row="0" BorderBrush="#FF848484" Background="#FFF9F9F9" HorizontalAlignment="Left" Margin="5,0" Click="IR_Click"/>
             <Button Content="Depth" Width="75" Height="20" Grid.Row="0" BorderBrush="#FF848484" Background="#FFF9F9F9" HorizontalAlignment="Left" Margin="5,0" Click="Depth_Click"/>
             <Button Content="Binary" Width="75" Height="20" Grid.Row="0" BorderBrush="#FF848484" Background="#FFF9F9F9" HorizontalAlignment="Left" Margin="5,0" Click="Binary_Click"/>
         </StackPanel>
-        
-        <Viewbox HorizontalAlignment="Center" Grid.Row="1">
-            <Image x:Name="displayScreen" Source="{Binding DepthSource}" Stretch="UniformToFill" OpacityMask="#FFAA6565" MinHeight="26" MinWidth="26"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <TextBlock x:Name="XDisplay" TextWrapping="Wrap" Text="X" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="10,0"/>
+            <TextBlock x:Name="YDisplay" TextWrapping="Wrap" Text="Y" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="10,0"/>
+            <TextBlock x:Name="ZDisplay" TextWrapping="Wrap" Text="Z" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="10,0"/>
+            <TextBlock x:Name="FpsDisplay" TextWrapping="Wrap" Text="Fps" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="50,0,10,0"/>
+        </StackPanel>
+
+            <Viewbox HorizontalAlignment="Center" Grid.Row="1">
+            <Image x:Name="DisplayScreen" Source="{Binding DepthSource}" Stretch="UniformToFill" OpacityMask="#FFAA6565" MinHeight="26" MinWidth="26"/>
         </Viewbox>
         <Separator HorizontalAlignment="Stretch" Height="1" VerticalAlignment="Bottom" Grid.Row="0" Margin="0,1"/>
     </Grid>

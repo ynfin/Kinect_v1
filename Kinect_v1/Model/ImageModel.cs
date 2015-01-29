@@ -15,99 +15,74 @@ namespace Kinect_v1.Model
     class ImageModel
     {
         // Color related data
-        Image<Hsv, Byte> ColorImage = null;
-        Image<Gray, Byte> ColorProcessed = null;
-        PointF gravityCenter = new PointF(-1,-1);
+        Image<Hsv, Byte> _colorImage = null;
+        Image<Gray, Byte> _colorProcessed = null;
+        PointF _gravityCenter = new PointF(-1,-1);
+
+        Image<Gray, Byte> _depthImage = null;
+        Image<Gray, Byte> _infraredImage = null;
+
+        Hsv _lowerColorThreshold = new Hsv(100, 100, 100);
+        Hsv _upperColorThreshold = new Hsv(200, 200, 200);
 
 
-        Image<Gray, Byte> DepthImage = null;
-        Image<Gray, Byte> InfraredImage = null;
-
-        Hsv lowerColorThreshold = new Hsv(100, 100, 100);
-        Hsv upperColorThreshold = new Hsv(200, 200, 200);
-
-        public Image<Hsv,Byte> BitmapToColorImage(WriteableBitmap inputFrame)
+        public void SetColorFrame(Bitmap rawInput)
         {
-            Bitmap bmp;
-            using (MemoryStream bitmapstream = new MemoryStream())
-            {
-                BitmapEncoder encoder = new BmpBitmapEncoder();
-                encoder.Frames.Add(BitmapFrame.Create((BitmapSource)inputFrame));
-                encoder.Save(bitmapstream);
-                bmp = new Bitmap(bitmapstream);
-                return new Image<Hsv, Byte>(bmp);
-            }
-            //return new Image<Hsv, Byte>(bmp);
+            this._colorImage = new Image<Hsv, byte>(rawInput);
         }
-
-  
-        public Image<Gray, Byte> BitmapToGrayscaleImage(WriteableBitmap inputFrame)
-        {
-            BitmapEncoder encoder = new BmpBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(inputFrame));
-            MemoryStream ms = new MemoryStream();
-            encoder.Save(ms);
-            return new Image<Gray, Byte>(new Bitmap(ms));
-        }
-
        
-        public void setDepthFrame(WriteableBitmap rawInput)
+        public void SetDepthFrame(Bitmap rawInput)
         {
-            this.DepthImage = BitmapToGrayscaleImage(rawInput);
+            this._depthImage = new Image<Gray, byte>(rawInput);
             // add the kinect formatted frame here as well, in order to map everything after locating colorcoordinates.
         }
 
-        public void setInfraredFrame(WriteableBitmap rawInput)
+        public void SetInfraredFrame(Bitmap rawInput)
         {
-            this.InfraredImage = BitmapToGrayscaleImage(rawInput);
+            this._infraredImage = new Image<Gray, byte>(rawInput);
         }
 
-        public void triggerProcessing()
+        public void TriggerProcessing()
         {
-            processColorImage();
+            ProcessColorImage();
         }
 
-        public void processColorImage()
+        public void ProcessColorImage()
         {
             //this.ColorProcessed = this.ColorImage.InRange(this.lowerColorThreshold, this.upperColorThreshold);
             //this.ColorProcessed = this.ColorProcessed.Dilate(5);
             //this.ColorProcessed = this.ColorProcessed.Erode(5);
 
-            this.ColorProcessed = ColorImage.Convert<Gray, Byte>();
-            this.ColorProcessed.ToBitmap().Save(@"C:\Users\Kinect\Pictures\fromImageModel.bmp");
-            System.Diagnostics.Debug.WriteLine("saved");
+            this._colorProcessed = _colorImage.Convert<Gray, Byte>();
+            //this.ColorProcessed.ToBitmap().Save(@"C:\Users\Kinect\Pictures\fromImageModel.bmp");
+            //System.Diagnostics.Debug.WriteLine("saved");
             //MCvMoments moment = this.ColorProcessed.GetMoments(true);
             //this.gravityCenter = new PointF(((float)moment.m10 / (float)moment.m00),(float)(moment.m01 / (float)moment.m00));
         }
 
-        public Bitmap getBinaryBitmap()
+        public Bitmap GetBinaryBitmap()
         {
-            return this.ColorProcessed.ToBitmap();
+            return this._colorProcessed.ToBitmap();
         }
 
-        public Bitmap getColorBitmap()
+        public Bitmap GetColorBitmap()
         {
-            return this.ColorImage.ToBitmap();
+            return this._colorImage.ToBitmap();
         }
 
-        public void recieveWritableColorBitmap(WriteableBitmap inWBMP)
+        public void RecieveWritableColorBitmap(WriteableBitmap inWbmp)
         {
             BitmapEncoder encoder = new BmpBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(inWBMP));
+            encoder.Frames.Add(BitmapFrame.Create(inWbmp));
            
             using (MemoryStream ms = new MemoryStream())
             {
                 encoder.Save(ms);
                 Bitmap b=new Bitmap(ms);
-                ColorImage = new Image<Hsv, Byte>(b);
+                _colorImage = new Image<Hsv, Byte>(b);
             }     
         }
 
-        public void setColorFrame(WriteableBitmap rawInput)
-        {
-            System.Diagnostics.Debug.WriteLine("color is started");
-            this.ColorImage = BitmapToColorImage(rawInput);
-            System.Diagnostics.Debug.WriteLine("color is set");
-        }
+        
     }
 }
