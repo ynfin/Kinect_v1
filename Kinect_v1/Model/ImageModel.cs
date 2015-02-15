@@ -1,88 +1,163 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.IO;
-using System.Threading.Tasks;
+using System.Diagnostics;
+using System.Drawing;
+using System.Windows.Media.Imaging;
 using Emgu.CV;
 using Emgu.CV.Structure;
-using Emgu.Util;
-using System.Windows.Media.Imaging;
-using System.Drawing;
 
 namespace Kinect_v1.Model
 {
     class ImageModel
     {
+
         // Color related data
-        Image<Hsv, Byte> _colorImage = null;
-        Image<Gray, Byte> _colorProcessed = null;
-        PointF _gravityCenter = new PointF(-1,-1);
+        private Image<Bgra, Byte> _colorImageBgra;// = new Image<Bgra, byte>("null_large_color.png");
+        private Image<Gray, Byte> _colorProcessed;// = new Image<Gray, byte>(1920, 1080, new Gray(100));
 
-        Image<Gray, Byte> _depthImage = null;
-        Image<Gray, Byte> _infraredImage = null;
+        private Image<Gray, Byte> _depthImage;// = new Image<Gray, byte>("null_small.png");
 
-        Hsv _lowerColorThreshold = new Hsv(100, 100, 100);
-        Hsv _upperColorThreshold = new Hsv(200, 200, 200);
+        private float _gravCenterX;
+        private float _gravCenterY;
 
+        Hsv _lowerColorThreshold = new Hsv(88, 2, 250);
+        Hsv _upperColorThreshold = new Hsv(92, 6, 254);
 
-        public void SetColorFrame(Bitmap rawInput)
+        MCvMoments moments = new MCvMoments();
+
+        public bool fetchNextBinaryImage = false;
+        public bool newBinaryReady = false;
+
+        // PROCESSORS
+        public void Processcolor()
         {
-            this._colorImage = new Image<Hsv, byte>(rawInput);
+
+            using (Image<Hsv, byte> im = _colorImageBgra.Convert<Hsv, byte>())
+            {
+                using (Image<Gray, byte> t_img = im.InRange(_lowerColorThreshold, _upperColorThreshold))
+                {
+
+                    moments = t_img.GetMoments(true);
+                    _gravCenterX = (float)moments.GravityCenter.x;
+                    _gravCenterY = (float)moments.GravityCenter.y;
+                    _colorProcessed = t_img.Clone();
+
+                }
+            }
+
+
+
+            //_colorProcessed = _colorImageBgra.Convert<Gray, Byte>();
+
+            // Segmentation
+            //_colorImageHsv = _colorImageBgra.Convert<Hsv, byte>();
+            //_colorProcessed = _colorImageHsv.InRange(_lowerColorThreshold, _upperColorThreshold);
+
+            // Get moments
+            //moments = _colorProcessed.GetMoments(true);
+            //_gravCenterX = (float)moments.GravityCenter.x;
+            //_gravCenterY = (float)moments.GravityCenter.y;
         }
-       
-        public void SetDepthFrame(Bitmap rawInput)
+
+
+        public int[] ProcesscolorReturnCoords()
         {
-            this._depthImage = new Image<Gray, byte>(rawInput);
-            // add the kinect formatted frame here as well, in order to map everything after locating colorcoordinates.
+            int[] coordInts = new int[3];
+
+            using (Image<Hsv, byte> im = _colorImageBgra.Convert<Hsv, byte>())
+            {
+                using (Image<Gray, byte> gim = im.InRange(_lowerColorThreshold, _upperColorThreshold))
+                {
+                    moments = gim.GetMoments(true);
+                    coordInts[0] = (int)moments.GravityCenter.x;
+                    coordInts[1] = (int)moments.GravityCenter.y;
+                    coordInts[2] = -1;
+
+                    if (fetchNextBinaryImage)
+                    {
+                        _colorProcessed = gim.Clone();
+                        fetchNextBinaryImage = false;
+                        newBinaryReady = true;
+                    }
+                }
+            }
+
+            return coordInts;
         }
 
-        public void SetInfraredFrame(Bitmap rawInput)
+
+        public int[] getColorAtPixel(int x, int y, bool setcoloralso)
         {
-            this._infraredImage = new Image<Gray, byte>(rawInput);
+            int[] hsvInts = new[] {0, 0, 0};
+
+            using (Image<Hsv, byte> im = _colorImageBgra.Convert<Hsv, byte>())
+            {
+                hsvInts[0] = im.Data[y, x, 0]; //Read to the Red Spectrum
+                hsvInts[1] = im.Data[y, x, 1]; //Read to the Green Spectrum
+                hsvInts[2] = im.Data[y, x, 2]; //Read to the BlueSpectrum
+            }
+
+            if (setcoloralso)
+            {
+                _lowerColorThreshold = new Hsv(hsvInts[0] - 5, hsvInts[1] - 10, hsvInts[2] - 10);
+                _upperColorThreshold = new Hsv(hsvInts[0] + 5, hsvInts[1] + 10, hsvInts[2] + 10);
+            }
+            return hsvInts;
         }
 
-        public void TriggerProcessing()
+        public PointF getGravityCenter()
         {
-            ProcessColorImage();
+            return new PointF(_gravCenterX, _gravCenterY);
         }
 
-        public void ProcessColorImage()
+
+        public void drawCrosshairOnGrayImage(float x, float y)
         {
-            //this.ColorProcessed = this.ColorImage.InRange(this.lowerColorThreshold, this.upperColorThreshold);
-            //this.ColorProcessed = this.ColorProcessed.Dilate(5);
-            //this.ColorProcessed = this.ColorProcessed.Erode(5);
-
-            this._colorProcessed = _colorImage.Convert<Gray, Byte>();
-            //this.ColorProcessed.ToBitmap().Save(@"C:\Users\Kinect\Pictures\fromImageModel.bmp");
-            //System.Diagnostics.Debug.WriteLine("saved");
-            //MCvMoments moment = this.ColorProcessed.GetMoments(true);
-            //this.gravityCenter = new PointF(((float)moment.m10 / (float)moment.m00),(float)(moment.m01 / (float)moment.m00));
+            _colorProcessed.Draw(new Cross2DF(new PointF(x, y), 60, 60), new Gray(125), 3);
         }
 
+
+        // GETTERS AND SETTERS
+        // setters
+
+        public void createGrayImage(byte[] pixels, int width, int height)
+        {
+            using (Image<Gray, byte> im = new Image<Gray, byte>(width, height))
+            {
+                im.Bytes = pixels;
+                _depthImage = im.Clone();
+            }
+        }
+
+        public void createColorImage(byte[] pixels, int width, int height)
+        {
+            using (Image<Bgra, byte> im = new Image<Bgra, byte>(width, height))
+            {
+                im.Bytes = pixels;
+                _colorImageBgra = im.Clone();
+            }
+        }
+
+        //getters
         public Bitmap GetBinaryBitmap()
         {
-            return this._colorProcessed.ToBitmap();
+            newBinaryReady = false;
+            return _colorProcessed.ToBitmap();
+        }
+
+
+
+        public Bitmap GetDepthBitmap()
+        {
+            return _depthImage.ToBitmap();
         }
 
         public Bitmap GetColorBitmap()
         {
-            return this._colorImage.ToBitmap();
+            return _colorImageBgra.ToBitmap();
         }
 
-        public void RecieveWritableColorBitmap(WriteableBitmap inWbmp)
-        {
-            BitmapEncoder encoder = new BmpBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(inWbmp));
-           
-            using (MemoryStream ms = new MemoryStream())
-            {
-                encoder.Save(ms);
-                Bitmap b=new Bitmap(ms);
-                _colorImage = new Image<Hsv, Byte>(b);
-            }     
-        }
 
-        
+
+
     }
 }
