@@ -7,10 +7,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.Security.AccessControl;
 using System.Threading.Tasks;
-using System.Windows.Controls;
-using Kinect_v1.Model;
 using Microsoft.Kinect;
 using Brushes = System.Drawing.Brushes;
 using Point = System.Drawing.Point;
@@ -51,14 +48,22 @@ namespace Kinect_v1
 
         private CameraSpacePoint[] _cameraSpacePoints;
 
+        // Intermediate storage for the color to depth mapping
+        private DepthSpacePoint[] _colorMappedToDepthPoints = null;
+        private CameraSpacePoint[] colorMappedToCameraPoints = null;
+        private ushort[] framed;
+
         private TimeSpan _colorFrameCaptureTimeSpan;
         private TimeSpan DepthFrameCaptureTimeSpan;
 
         public bool DepthSet;
         public bool ColorSet;
 
-        private int[] rawCoords = new int[]{0,0,0}; //raw 2D colorspace coords
-        private int[] mapCoords = new int[]{0,0,0}; //mapped to 3D cameraspace coords
+        private int[] rawCoords = new int[] { 0, 0, 0 }; //raw 2D colorspace coords
+        private int[] mapCoords = new int[] { 0, 0, 0 }; //mapped to 3D cameraspace coords
+        private Coordinates coordinatesToGui;
+
+        private int[] globalret;
 
         private TaskScheduler _scheduler;
 
@@ -96,9 +101,13 @@ namespace Kinect_v1
 
             // spaces
             _cameraSpacePoints = new CameraSpacePoint[_colorFrameDescription.Width * _colorFrameDescription.Height];
+            _colorMappedToDepthPoints = new DepthSpacePoint[_colorFrameDescription.Width * _colorFrameDescription.Height];
+            framed = new ushort[_depthFrameDescription.Width * _depthFrameDescription.Height];
 
             //threading
             _scheduler = TaskScheduler.FromCurrentSynchronizationContext();
+
+            globalret = new int[]{0,0};
 
             // startup
 
@@ -121,8 +130,6 @@ namespace Kinect_v1
         private void Reader_MultiFrameReader(object sender, MultiSourceFrameArrivedEventArgs e)
         {
             MultiSourceFrame multiSourceFrame = e.FrameReference.AcquireFrame();
-            //DepthFrameCaptureTimeSpan = depthFrame.RelativeTime;
-            //ColorFrameCaptureTimeSpan = colorFrame.RelativeTime;
 
             using (ColorFrame colorFrame = multiSourceFrame.ColorFrameReference.AcquireFrame())
             {
@@ -130,7 +137,7 @@ namespace Kinect_v1
                 {
                     _colorFrameDescription = colorFrame.FrameDescription;
                     _colorFrameCaptureTimeSpan = colorFrame.RelativeTime;
-                    
+
                     _colorBitmap.Lock();
 
                     // verify data and write the new color frame data to the display bitmap
@@ -140,10 +147,8 @@ namespace Kinect_v1
                         _colorBitmap.AddDirtyRect(new Int32Rect(0, 0, _colorBitmap.PixelWidth, _colorBitmap.PixelHeight));
 
                         // draw on the bitmap
-                        Point[] p = {new Point(700, 700), new Point(200, 200)};
-                        p[0] = new Point(rawCoords[0], rawCoords[1]);
-                        drawCoordsOnColorBitmap(p,64);
-                           
+                        drawCoordsOnColorBitmap(new Point(rawCoords[0],rawCoords[1]), 64);
+
                         // storage for imagemodel
                         colorFrame.CopyConvertedFrameDataToArray(_rawColorPix, ColorImageFormat.Bgra);
                         _imageModel.createColorImage(_rawColorPix, _colorFrameDescription.Width, _colorFrameDescription.Height);
@@ -175,8 +180,24 @@ namespace Kinect_v1
 
                             ProcessDepthFrameData(depthBuffer.UnderlyingBuffer, depthBuffer.Size, depthFrame.DepthMinReliableDistance, maxDepth);
                             depthFrameProcessed = true;
+
+                            
+
+
                         }
                     }
+
+                    using (KinectBuffer depthFrameData = depthFrame.LockImageBuffer())
+                    {
+                        _kinectSensor.CoordinateMapper.MapColorFrameToCameraSpaceUsingIntPtr(depthFrameData.UnderlyingBuffer, depthFrameData.Size, _cameraSpacePoints);
+                        _kinectSensor.CoordinateMapper.MapColorFrameToDepthSpaceUsingIntPtr(depthFrameData.UnderlyingBuffer, depthFrameData.Size, _colorMappedToDepthPoints);
+
+                        //_kinectSensor.CoordinateMapper.MapColorFrameToDepthSpaceUsingIntPtr(
+                        //    depthFrameData.UnderlyingBuffer, depthFrameData.Size, this.colorMappedToDepthPoints);
+                    }
+
+
+
                 }
             }
 
@@ -185,25 +206,22 @@ namespace Kinect_v1
 
             if (DepthSet && ColorSet)
             {
-                
-                taskCounter ++;
-                Task.Factory.StartNew<int[]>(() => ProcessingMethod()).ContinueWith((i) => UpdateCoords(i.Result), _scheduler);
+
+                taskCounter++;
+                Task.Factory.StartNew(() => ProcessingMethod()).ContinueWith((i) => UpdateCoords(i.Result), _scheduler);
             }
-               
+
         }
 
 
-        private void drawCoordsOnColorBitmap(Point[] coordPointArray, int sizeD)
+        private void drawCoordsOnColorBitmap(Point coordPoint, int sizeD)
         {
             // inside bounds check
-            foreach (var coordPoint in coordPointArray)
-            {
-                if (coordPoint.X <= sizeD/2 || coordPoint.X >= _colorFrameDescription.Width-sizeD/2 ||
-                    coordPoint.Y <= sizeD/2 || coordPoint.Y >= _colorFrameDescription.Height-sizeD/2)
-                    return;  
-            }
-            
-                
+
+            if (coordPoint.X <= sizeD / 2 || coordPoint.X >= _colorFrameDescription.Width - sizeD / 2 ||
+                coordPoint.Y <= sizeD / 2 || coordPoint.Y >= _colorFrameDescription.Height - sizeD / 2)
+                return;
+
             // draw on bitmap
             var tempBitmap = new Bitmap(_colorBitmap.PixelWidth,
                 _colorBitmap.PixelHeight,
@@ -218,52 +236,63 @@ namespace Kinect_v1
                 bitmapGraphics.CompositingMode = CompositingMode.SourceOver;
                 bitmapGraphics.CompositingQuality = CompositingQuality.HighSpeed;
 
-                bool colordrawn = false;
-                foreach (var coordPoint in coordPointArray)
-                {
-                    if (colordrawn)
-                    {
-                        bitmapGraphics.DrawIcon(new Icon("yellowmarker.ico", new System.Drawing.Size(sizeD, sizeD)),
+                bitmapGraphics.DrawIcon(new Icon("yellowmarker.ico", new System.Drawing.Size(sizeD, sizeD)),
                            new Rectangle(new Point(coordPoint.X - sizeD / 2, coordPoint.Y - sizeD / 2), new System.Drawing.Size(sizeD, sizeD)));
 
-                        bitmapGraphics.FillRectangle(new SolidBrush(System.Drawing.Color.FromArgb(150, 255, 255, 0)), new RectangleF(new Point(coordPoint.X + (sizeD / 2) + 10, coordPoint.Y - sizeD / 2 - 32), new System.Drawing.Size(150, 28)));
-                        bitmapGraphics.DrawString("colorspace", new Font(new System.Drawing.FontFamily("Arial"), 16), Brushes.Black, new RectangleF(new Point(coordPoint.X + (sizeD / 2) + 10, coordPoint.Y - sizeD / 2 - 35), new System.Drawing.Size(200, 30)));
-                    }
-                    else
-                    {
-                        bitmapGraphics.DrawIcon(new Icon("redmarker.ico", new System.Drawing.Size(sizeD, sizeD)),
-                            new Rectangle(new Point(coordPoint.X - sizeD / 2, coordPoint.Y - sizeD / 2), new System.Drawing.Size(sizeD, sizeD)));
-                        
-                        bitmapGraphics.FillRectangle(new SolidBrush(System.Drawing.Color.FromArgb(150, 255, 0, 0)), new RectangleF(new Point(coordPoint.X + (sizeD / 2) + 10, coordPoint.Y - sizeD / 2 - 32), new System.Drawing.Size(180, 28)));
-                        bitmapGraphics.DrawString("cameraspace", new Font(new System.Drawing.FontFamily("Arial"), 16), Brushes.Black, new RectangleF(new Point(coordPoint.X + (sizeD / 2) + 10, coordPoint.Y - sizeD / 2 - 35), new System.Drawing.Size(200, 30)));
-                        
-                        colordrawn = true;
-                    }        
-                }   
+                bitmapGraphics.FillRectangle(new SolidBrush(System.Drawing.Color.FromArgb(150, 255, 255, 0)), new RectangleF(new Point(coordPoint.X + (sizeD / 2) + 10, coordPoint.Y - sizeD / 2 - 32), new System.Drawing.Size(150, 28)));
+                bitmapGraphics.DrawString("colorspace", new Font(new System.Drawing.FontFamily("Arial"), 16), Brushes.Black, new RectangleF(new Point(coordPoint.X + (sizeD / 2) + 10, coordPoint.Y - sizeD / 2 - 35), new System.Drawing.Size(200, 30)));
+
+                bitmapGraphics.FillRectangle(new SolidBrush(System.Drawing.Color.FromArgb(150, 0, 0, 0)), new RectangleF(new Point(10,10), new System.Drawing.Size(200, 130)));
+                bitmapGraphics.DrawString("X:  " + coordinatesToGui.getCamCoordsFloat()[0].ToString("#0.000"), new Font(new System.Drawing.FontFamily("Arial"), 18), Brushes.LawnGreen, new RectangleF(new Point(10, 10), new System.Drawing.Size(200, 40)));
+                bitmapGraphics.DrawString("Y:  " + coordinatesToGui.getCamCoordsFloat()[1].ToString("#0.000"), new Font(new System.Drawing.FontFamily("Arial"), 18), Brushes.LawnGreen, new RectangleF(new Point(10, 50), new System.Drawing.Size(200, 40)));
+                bitmapGraphics.DrawString("Z:  " + coordinatesToGui.getCamCoordsFloat()[2].ToString("#0.000"), new Font(new System.Drawing.FontFamily("Arial"), 18), Brushes.LawnGreen, new RectangleF(new Point(10, 90), new System.Drawing.Size(200, 40)));
             }
             tempBitmap.Dispose();
         }
 
-       
-        private int[] ProcessingMethod()
+            
+        private Coordinates ProcessingMethod()
         {
             //System.Threading.Thread.Sleep(1000);
-            return _imageModel.ProcesscolorReturnCoords();
+            //return _imageModel.ProcesscolorReturnCoords();
+
+            Coordinates coordinateStorage = new Coordinates(_imageModel.ProcesscolorReturnCoords());
+            coordinateStorage.setCameraCoords(mapWithGivenCoords(coordinateStorage.GetColorCoordinatesInts()));
+
+            //int[] returnedCoords = _imageModel.ProcesscolorReturnCoords();
+            //Debug.WriteLine(returnedCoords[0] + "," + returnedCoords[1]);
+            //return mapWithGivenCoords(returnedCoords);
+            return coordinateStorage;
         }
 
-        private void UpdateCoords(int[] inputInts)
+        private void UpdateCoords(Coordinates inputInts)
         {
-            
-            if (_recordEnabled)
-                appendDataToLogg(inputInts, _colorFrameCaptureTimeSpan);
 
-            // ----------------
-            rawCoords = inputInts;
+            Findcoordinatesindepthspace(inputInts.GetColorCoordinatesInts());
+
+
+            // add to log if recording
+            if (_recordEnabled)
+                appendDataToLogg(inputInts.getCamCoords(), _colorFrameCaptureTimeSpan);
+
+            // 
+            rawCoords = inputInts.GetColorCoordinatesInts();
             DepthSet = false;
             ColorSet = false;
 
+            // get binary bitmap if requested
             if (_imageModel.newBinaryReady)
-                _binBitmap =  writableBitmapFromBitmap(_imageModel.GetBinaryBitmap());
+                _binBitmap = writableBitmapFromBitmap(_imageModel.GetBinaryBitmap());
+
+            // set display coordinates
+            //XDisplay.Text = inputInts.getCamCoordsFloat()[0].ToString();
+            //YDisplay.Text = inputInts.getCamCoordsFloat()[1].ToString();
+            //ZDisplay.Text = inputInts.getCamCoordsFloat()[2].ToString();
+
+            coordinatesToGui = inputInts;
+
+            //rawCoords[0] = inputInts[0];
+            //rawCoords[1] = inputInts[1];
 
             loggerDisplay.Text = (_colorFrameCaptureTimeSpan).ToString();
             FpsDisplay.Text = "CV: " + _fpsCounter.Tick();
@@ -280,27 +309,111 @@ namespace Kinect_v1
                 ushort depth = frameData[i];
                 _depthPixels[i] = (byte)(depth >= minDepth && depth <= maxDepth ? (depth / MapDepthToByte) : 0);
             }
-            _imageModel.createGrayImage(_depthPixels, _depthFrameDescription.Width, _depthFrameDescription.Height);
+            //_imageModel.createGrayImage(_depthPixels, _depthFrameDescription.Width, _depthFrameDescription.Height);
             DepthSet = true;
         }
 
 
-        private void mapWithGivenCoords(Point unmappedPoint)
+        private float[] mapWithGivenCoords(int[] unmappedPoint2D)
         {
-            // declare the unmapped coords
-           
-            _kinectSensor.CoordinateMapper.MapColorFrameToCameraSpace(_rawDepthPix,_cameraSpacePoints);
-        
+            float[] colorMappedToCamera = new float[3];
+
+            unsafe
+            {
+                fixed (CameraSpacePoint* colorMappedToCamPointsPointer = _cameraSpacePoints)
+                {
+
+                    if (unmappedPoint2D[0] < 0) unmappedPoint2D[0] = 0;
+                    if (unmappedPoint2D[1] < 0) unmappedPoint2D[1] = 0;
+
+                    int colorKndex = (unmappedPoint2D[1] * _colorFrameDescription.Width) + unmappedPoint2D[0];
+
+                    colorMappedToCamera[0] = colorMappedToCamPointsPointer[colorKndex].X;
+                    colorMappedToCamera[1] = colorMappedToCamPointsPointer[colorKndex].Y;
+                    colorMappedToCamera[2] = colorMappedToCamPointsPointer[colorKndex].Z;
+                }
+            }
+            return colorMappedToCamera;
         }
+
+
+        // declare the unmapped coords
+
+        public int[] Findcoordinatesindepthspace(int[] c)
+        {
+
+            int[] ret = new int[2];
+
+            unsafe
+            {
+                fixed (DepthSpacePoint* colorMappedToDepthPointsPointer = _colorMappedToDepthPoints)
+                {
+                    int colorKndex = (c[1] * 1920) + c[0];
+
+                    float colorMappedToDepthX = colorMappedToDepthPointsPointer[colorKndex].X;
+                    float colorMappedToDepthY = colorMappedToDepthPointsPointer[colorKndex].Y;
+
+                    if (!float.IsNegativeInfinity(colorMappedToDepthX) &&
+                        !float.IsNegativeInfinity(colorMappedToDepthY))
+                    {
+                        // Make sure the depth pixel maps to a valid point in color space
+                        int depthX = (int) (colorMappedToDepthX + 0.5f);
+                        int depthY = (int) (colorMappedToDepthY + 0.5f);
+
+                        if ((depthX >= 0) && (depthX < _depthFrameDescription.Width) && (depthY >= 0) &&
+                            (depthY < _depthFrameDescription.Height))
+                        {
+                            ret[0] = (int) colorMappedToDepthX;
+                            ret[1] = (int) colorMappedToDepthY;
+
+                            
+
+                        }
+                    }
+                }
+            }
+            Debug.WriteLine(ret[0]+","+ret[1]);
+            globalret = ret;
+            return ret;
+            
+        }
+
+
+        /*
+        _kinectSensor.CoordinateMapper.MapColorFrameToCameraSpace(_rawDepthPix,_cameraSpacePoints);
+
+        int colorKndex = (unmappedPoint.X * 1920) + unmappedPoint.Y;
+
+        // Her skjer mappingen colorindex inn -> depthindex ut
+        float colorMappedToDepthX = _cameraSpacePoints[colorKndex].X;
+        float colorMappedToDepthY = _cameraSpacePoints[colorKndex].Y;
+
+        if (!float.IsNegativeInfinity(colorMappedToDepthX) && !float.IsNegativeInfinity(colorMappedToDepthY))
+        {
+            int depthX = (int)(colorMappedToDepthX + 0.5f);
+            int depthY = (int)(colorMappedToDepthY + 0.5f);
+
+            if ((depthX >= 0) && (depthX < _depthFrameDescription.Width) && (depthY >= 0) && (depthY < _depthFrameDescription.Height))
+            {
+                Debug.WriteLine("[" + depthX + "," + depthY + "]" + _rawDepthPix[(depthY * _depthFrameDescription.Width) + depthX]);
+                mapCoords[0] = depthX;
+                mapCoords[1] = depthY;
+                mapCoords[2] = _rawDepthPix[(depthY*_depthFrameDescription.Width) + depthX];
+            }
+        }
+         */
+
 
         private void appendDataToLogg(int[] coordInts, TimeSpan time)
         {
             // convert input to z,y,x,time format
-            _logger.appendLogline(coordInts,time);
+            _logger.appendLogline(coordInts, time);
         }
 
         private void RenderDepthPixels()
         {
+            _depthPixels[(globalret[1] * 512) + globalret[0]] = byte.MaxValue;
+
             _depthBitmap.WritePixels(
                 new Int32Rect(0, 0, _depthBitmap.PixelWidth, _depthBitmap.PixelHeight),
                 _depthPixels,
@@ -309,31 +422,15 @@ namespace Kinect_v1
         }
 
         private WriteableBitmap writableBitmapFromBitmap(Bitmap bmp)
-        {   
+        {
             // GDI HANDLE LEAK
             BitmapSource b = System.Windows.Interop.Imaging.CreateBitmapSourceFromHBitmap(bmp.GetHbitmap(), IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromWidthAndHeight(bmp.Width, bmp.Height));
             WriteableBitmap wb = new WriteableBitmap(b);
-            
+
             return wb;
         }
 
-        /*
-        public WriteableBitmap ByteArrayToImage(Byte[] BArray)
-        {
-
-            var width = 100;
-            var height = 100;
-            var dpiX = 96d;
-            var dpiY = 96d;
-            var pixelFormat = PixelFormats.Pbgra32;
-            var bytesPerPixel = (pixelFormat.BitsPerPixel + 7) / 8;
-            var stride = bytesPerPixel * width;
-
-            var bitmap = BitmapImage.Create(width, height, dpiX, dpiY, pixelFormat, null, BArray, stride);
-            WriteableBitmap wbtmMap = new WriteableBitmap(BitmapFactory.ConvertToPbgra32Format(bitmap));
-            return wbtmMap;
-        }
-         */
+        
 
         public ImageSource DepthSource
         {
@@ -392,8 +489,7 @@ namespace Kinect_v1
         private void DisplayScreen_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             System.Windows.Point p = e.GetPosition(DisplayScreen);
-            Debug.WriteLine("looking at " + p.X +", "+ p.Y);
-            _imageModel.getColorAtPixel((int) p.X, (int) p.Y, true);
+            _imageModel.getColorAtPixel((int)p.X, (int)p.Y, true);
         }
 
         private void RecordButton_Click(object sender, RoutedEventArgs e)
@@ -413,27 +509,9 @@ namespace Kinect_v1
                 RecordButton.Background = System.Windows.Media.Brushes.SlateGray;
                 RecordButton.Content = "Record";
             }
-                
-            
-        
+
         }
-
-
-        /*
-        public static Bitmap GetBitmapFromBitmapSource(BitmapSource bSource)
-        {
-            Bitmap bmp;
-            using (MemoryStream ms = new MemoryStream())
-            {
-                BitmapEncoder enc = new BmpBitmapEncoder();
-                enc.Frames.Add(BitmapFrame.Create(bSource));
-                enc.Save(ms);
-                bmp = new Bitmap(ms);
-            }
-            return bmp;
-        }
-        */
-
-
     }
 }
+
+

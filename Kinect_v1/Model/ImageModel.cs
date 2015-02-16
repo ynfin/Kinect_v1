@@ -61,7 +61,7 @@ namespace Kinect_v1.Model
 
         public int[] ProcesscolorReturnCoords()
         {
-            int[] coordInts = new int[3];
+            int[] coordInts = new int[2];
 
             using (Image<Hsv, byte> im = _colorImageBgra.Convert<Hsv, byte>())
             {
@@ -70,7 +70,6 @@ namespace Kinect_v1.Model
                     moments = gim.GetMoments(true);
                     coordInts[0] = (int)moments.GravityCenter.x;
                     coordInts[1] = (int)moments.GravityCenter.y;
-                    coordInts[2] = -1;
 
                     if (fetchNextBinaryImage)
                     {
