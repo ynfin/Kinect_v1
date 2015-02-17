@@ -9,6 +9,7 @@ namespace Kinect_v1
         string logPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)+@"\KinectLogs";
         private string _fullpath;
         private int framecount = 1;
+        public bool fileisopen;
 
         StringBuilder mainstring = new StringBuilder();
 
@@ -38,6 +39,11 @@ namespace Kinect_v1
         {
             mainstring.AppendLine(framecount +","+coords[0]+","+coords[1]+","+coords[2]+","+timespan);
             framecount ++;
+        }
+        public void appendLogline(float[] coords, TimeSpan timespan)
+        {
+            mainstring.AppendLine(framecount + "," + coords[0] + "," + coords[1] + "," + coords[2] + "," + timespan);
+            framecount++;
         }
 
         private string createFilePath(string path)

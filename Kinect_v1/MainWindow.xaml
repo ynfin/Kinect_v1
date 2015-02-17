@@ -18,13 +18,9 @@
             <Button x:Name="RecordButton" Content="Record" Width="80" Height="20" Grid.Row="0" BorderBrush="White" Background="#FF4B4B4B" HorizontalAlignment="Left" Margin="25,0" Click="RecordButton_Click" Foreground="White"/>
         </StackPanel>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-            <TextBlock x:Name="XDisplay" TextWrapping="Wrap" Text="X" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="20,0" Foreground="White"/>
-            <TextBlock x:Name="YDisplay" TextWrapping="Wrap" Text="Y" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="20,0" Foreground="White"/>
-            <TextBlock x:Name="ZDisplay" TextWrapping="Wrap" Text="Z" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="20,0" Foreground="White"/>
             <TextBlock x:Name="FpsDisplay" TextWrapping="Wrap" Text="Fps" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="20,0,10,0" Foreground="White"/>
             <TextBlock x:Name="FpsDisplay2" TextWrapping="Wrap" Text="Fps" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="20,0,10,0" Foreground="White"/>
-            <TextBlock x:Name="FpsDisplay3" TextWrapping="Wrap" Text="Fps" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="20,0,10,0" Foreground="White"/>
-            <TextBlock x:Name="loggerDisplay" TextWrapping="Wrap" Text="Fps" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="20,0,10,0" Foreground="White"/>
+            <TextBlock x:Name="loggerDisplay" TextWrapping="Wrap" Text="TimeStamp" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="20,0,10,0" Foreground="White"/>
         </StackPanel>
         
             <Viewbox HorizontalAlignment="Center" Grid.Row="1">

@@ -1,4 +1,5 @@
 ﻿
+using Point = System.Drawing.Point;
 
 namespace Kinect_v1
 {
@@ -7,6 +8,13 @@ namespace Kinect_v1
         private int[] cameraCoordinateInts;
         private float[] cameraCoordinateFloat;
         private int[] colorCoordinateInts;
+
+        public Coordinates()
+        {
+            colorCoordinateInts = new int[] { -1, -1 ,-1 };
+            cameraCoordinateFloat = new float[] { -1, -1 };
+            cameraCoordinateInts = new int[] { -1, -1, -1 };
+        }
 
         public Coordinates(int[] colorCoords2D)
         {
@@ -18,6 +26,11 @@ namespace Kinect_v1
             cameraCoordinateFloat = camCoords3D;
         }
 
+
+        public Point getColorCoordinatesPoint()
+        {
+            return new Point(colorCoordinateInts[0], colorCoordinateInts[1]);
+        }
 
         public int[] getCamCoords()
         {

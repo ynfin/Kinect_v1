@@ -31,6 +31,41 @@ namespace Kinect_v1.Model
             return (1000/timein).ToString();
         }
 
+        public void restart()
+        {
+            watch.Restart();
+        }
+
+        public string TickMs(bool fullcycle)
+        {
+            long timein = watch.ElapsedMilliseconds;
+
+            System.Diagnostics.Debug.WriteLine(timein);
+
+            if (fullcycle)
+                watch.Restart();
+            else
+                watch.Reset();
+
+            if (window.Count >= windowlength)
+                window.Dequeue();
+
+            window.Enqueue(timein);
+
+            long sum = 0;
+
+            foreach (long time in window)
+                sum = sum + time;
+
+            if (window.Count < windowlength)
+                return "cal";
+
+            if (sum != 0 && windowlength != 0 && (sum / windowlength) != 0)
+                return ((sum / windowlength)).ToString();
+
+            return "-1";
+        }
+
         public string Tick()
         {
             long timein = watch.ElapsedMilliseconds;

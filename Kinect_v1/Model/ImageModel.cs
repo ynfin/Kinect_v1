@@ -4,6 +4,8 @@ using System.Drawing;
 using System.Windows.Media.Imaging;
 using Emgu.CV;
 using Emgu.CV.Structure;
+using System.Collections;
+using System.Collections.Generic;
 
 namespace Kinect_v1.Model
 {
@@ -13,7 +15,6 @@ namespace Kinect_v1.Model
         // Color related data
         private Image<Bgra, Byte> _colorImageBgra;// = new Image<Bgra, byte>("null_large_color.png");
         private Image<Gray, Byte> _colorProcessed;// = new Image<Gray, byte>(1920, 1080, new Gray(100));
-
         private Image<Gray, Byte> _depthImage;// = new Image<Gray, byte>("null_small.png");
 
         private float _gravCenterX;
@@ -27,62 +28,34 @@ namespace Kinect_v1.Model
         public bool fetchNextBinaryImage = false;
         public bool newBinaryReady = false;
 
-        // PROCESSORS
-        public void Processcolor()
+        Image<Hsv, byte> imageHsv;
+        Image<Gray, byte> imageGray;
+
+        public ImageModel()
         {
-
-            using (Image<Hsv, byte> im = _colorImageBgra.Convert<Hsv, byte>())
-            {
-                using (Image<Gray, byte> t_img = im.InRange(_lowerColorThreshold, _upperColorThreshold))
-                {
-
-                    moments = t_img.GetMoments(true);
-                    _gravCenterX = (float)moments.GravityCenter.x;
-                    _gravCenterY = (float)moments.GravityCenter.y;
-                    _colorProcessed = t_img.Clone();
-
-                }
-            }
-
-
-
-            //_colorProcessed = _colorImageBgra.Convert<Gray, Byte>();
-
-            // Segmentation
-            //_colorImageHsv = _colorImageBgra.Convert<Hsv, byte>();
-            //_colorProcessed = _colorImageHsv.InRange(_lowerColorThreshold, _upperColorThreshold);
-
-            // Get moments
-            //moments = _colorProcessed.GetMoments(true);
-            //_gravCenterX = (float)moments.GravityCenter.x;
-            //_gravCenterY = (float)moments.GravityCenter.y;
+            imageHsv = new Image<Hsv, byte>(1920,1080);
+            imageGray = new Image<Gray, byte>(1920, 1080);
         }
 
-
+        // PROCESSORS
         public int[] ProcesscolorReturnCoords()
         {
             int[] coordInts = new int[2];
 
-            using (Image<Hsv, byte> im = _colorImageBgra.Convert<Hsv, byte>())
-            {
-                using (Image<Gray, byte> gim = im.InRange(_lowerColorThreshold, _upperColorThreshold))
+                using (imageHsv)
                 {
-                    moments = gim.GetMoments(true);
-                    coordInts[0] = (int)moments.GravityCenter.x;
-                    coordInts[1] = (int)moments.GravityCenter.y;
-
-                    if (fetchNextBinaryImage)
+                    imageHsv = _colorImageBgra.Convert<Hsv, byte>(); // ~37 ms
+                    using (imageGray)
                     {
-                        _colorProcessed = gim.Clone();
-                        fetchNextBinaryImage = false;
-                        newBinaryReady = true;
+                        imageGray = imageHsv.InRange(_lowerColorThreshold, _upperColorThreshold); // ~30 ms
+
+                        moments = imageGray.GetMoments(true);
+                        coordInts[0] = (int)(moments.GravityCenter.x);
+                        coordInts[1] = (int)(moments.GravityCenter.y);
                     }
                 }
-            }
-
             return coordInts;
         }
-
 
         public int[] getColorAtPixel(int x, int y, bool setcoloralso)
         {
@@ -129,6 +102,7 @@ namespace Kinect_v1.Model
 
         public void createColorImage(byte[] pixels, int width, int height)
         {
+            // kan det brukes pointer her???
             using (Image<Bgra, byte> im = new Image<Bgra, byte>(width, height))
             {
                 im.Bytes = pixels;
