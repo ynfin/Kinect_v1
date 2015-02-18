@@ -151,11 +151,12 @@ namespace Kinect_v1
                         //drawCoordsOnColorBitmap(new Point(rawCoords[0],rawCoords[1]), 64);
                         drawCoordsOnColorBitmap(_coordinates.getColorCoordinatesPoint() ,64);
 
+                        IntPtr rc = IntPtr.Zero;
                         // storage for imagemodel
+                        //_colorframe.CopyConvertedFrameDataToIntPtr(rc,1920*1080*4,ColorImageFormat.Bgra);
                         _colorframe.CopyConvertedFrameDataToArray(_rawColorPix, ColorImageFormat.Bgra);
+                        //_imageModel.createColorImage(rc, _colorFrameDescription.Width, _colorFrameDescription.Height);
                         _imageModel.createColorImage(_rawColorPix, _colorFrameDescription.Width, _colorFrameDescription.Height);
-
-
 
                         ColorSet = true;
                     }
