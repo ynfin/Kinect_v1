@@ -33,16 +33,24 @@ namespace Kinect_v1
             mainstring.AppendLine("----------------------------------------------------------------------");
             mainstring.AppendLine("format:<frame #>,<X>,<Y>,<Z>,<Time>");
             mainstring.AppendLine("----------------------------------------------------------------------\n");
+            mainstring.AppendLine("<STARTLOG>");
+
         }
 
         public void appendLogline(int[] coords, TimeSpan timespan)
         {
-            mainstring.AppendLine(framecount +","+coords[0]+","+coords[1]+","+coords[2]+","+timespan);
+            mainstring.AppendLine(framecount +"."+coords[0]+"."+coords[1]+"."+coords[2]+"."+timespan);
             framecount ++;
         }
         public void appendLogline(float[] coords, TimeSpan timespan)
         {
-            mainstring.AppendLine(framecount + "," + coords[0] + "," + coords[1] + "," + coords[2] + "," + timespan);
+            mainstring.AppendLine(
+                framecount + "," + 
+                coords[0].ToString(System.Globalization.CultureInfo.InvariantCulture) + "," + 
+                coords[1].ToString(System.Globalization.CultureInfo.InvariantCulture) + "," + 
+                coords[2].ToString(System.Globalization.CultureInfo.InvariantCulture) + "," + 
+                timespan);
+            
             framecount++;
         }
 
@@ -56,6 +64,7 @@ namespace Kinect_v1
             if (!Directory.Exists(_fullpath))
                 Directory.CreateDirectory(logPath);
 
+            mainstring.AppendLine("<ENDLOG>");
             StreamWriter file = new StreamWriter(_fullpath);
             file.WriteLine(mainstring);
             file.Close();

@@ -17,8 +17,8 @@ namespace Kinect_v1.Model
         private Image<Gray, Byte> _colorProcessed;// = new Image<Gray, byte>(1920, 1080, new Gray(100));
         private Image<Gray, Byte> _depthImage;// = new Image<Gray, byte>("null_small.png");
 
-        MCvScalar _lowerColorScalar = new MCvScalar(110-5,246-20,173-20);
-        MCvScalar _upperColorScalar = new MCvScalar(110+5,246+20,173+20);
+        MCvScalar _lowerColorScalar = new MCvScalar(110-2,246-20,173-20);
+        MCvScalar _upperColorScalar = new MCvScalar(110+2,246+20,173+20);
 
         MCvMoments moments = new MCvMoments();
 
@@ -30,12 +30,18 @@ namespace Kinect_v1.Model
         Image<Gray, byte> imageGray;
 
         IntPtr cvt = IntPtr.Zero;
+        MCvMoments mom = new MCvMoments();
 
         public ImageModel()
         {
             imageBgr = new Image<Bgr, byte>(1920, 1080);
             imageHsv = new Image<Hsv, byte>(1920,1080);
             imageGray = new Image<Gray, byte>(1920, 1080);
+        }
+
+        private double getNormCentralMoment(int xOrder, int yOrder)
+        {
+            return CvInvoke.cvGetNormalizedCentralMoment(ref mom, xOrder, yOrder);
         }
 
         // PROCESSORS
@@ -47,11 +53,26 @@ namespace Kinect_v1.Model
             CvInvoke.cvCvtColor(_colorImageBgra.Ptr,imageBgr.Ptr,Emgu.CV.CvEnum.COLOR_CONVERSION.BGRA2BGR);
             CvInvoke.cvCvtColor(imageBgr.Ptr, imageHsv.Ptr, Emgu.CV.CvEnum.COLOR_CONVERSION.BGR2HSV);
             CvInvoke.cvInRangeS(imageHsv.Ptr,_lowerColorScalar,_upperColorScalar,imageGray.Ptr);
+            //CvInvoke.cvSmooth(imageGray.Ptr, imageGray.Ptr, Emgu.CV.CvEnum.SMOOTH_TYPE.CV_GAUSSIAN, 9, 0, 0, 0);
+            //CvInvoke.cvErode(imageGray.Ptr, imageGray.Ptr, IntPtr.Zero, 1);
 
-            moments = imageGray.GetMoments(true);
-            coordInts[0] = (int)(moments.GravityCenter.x);
-            coordInts[1] = (int)(moments.GravityCenter.y);
-                
+            CvInvoke.cvMoments(imageGray.Ptr,ref mom,1);
+            coordInts[0] = (int)(mom.m10 / mom.m00);
+            coordInts[1] = (int)(mom.m01 / mom.m00);
+
+            //Debug.WriteLine("m00: " + mom.m00 + " m01: " + mom.m01 + " m10: " + mom.m10);
+
+            //moments = imageGray.GetMoments(true);
+            //coordInts[0] = (int)(moments.GravityCenter.x);
+            //coordInts[1] = (int)(moments.GravityCenter.y);
+
+            if (fetchNextBinaryImage)
+            {
+                _colorProcessed = imageGray;
+                newBinaryReady = true;
+                fetchNextBinaryImage = false;
+            }
+
             return coordInts;
         }
 
