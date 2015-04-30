@@ -4,26 +4,29 @@
         Title="Kinect Capture Master" Height="Auto" Width="800"
         SizeToContent="Height"
         Closing="MainWindow_Closing" Background="#FF373737" WindowStyle="ToolWindow">
-        
+
 
     <Grid x:Name="Img" Margin="0,0,0,0" Background="#FF303030">
         <Grid.RowDefinitions>
             <RowDefinition Height="32"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Width="531">
             <Button x:Name="buttonColor" Content="Color" Width="50" Height="20" Grid.Row="0" BorderBrush="White" Background="#FF4B4B4B" HorizontalAlignment="Left" Margin="5,0" Click="Color_Click" Foreground="White"/>
             <Button x:Name="buttonDepth" Content="Depth" Width="50" Height="20" Grid.Row="0" BorderBrush="White" Background="#FF4B4B4B" HorizontalAlignment="Left" Margin="5,0" Click="Depth_Click" Foreground="White"/>
             <Button Content="Binary" Width="50" Height="20" Grid.Row="0" BorderBrush="White" Background="#FF4B4B4B" HorizontalAlignment="Left" Margin="5,0" Click="Binary_Click" Foreground="White"/>
-            <Button x:Name="RecordButton" Content="Record" Width="80" Height="20" Grid.Row="0" BorderBrush="White" Background="#FF4B4B4B" HorizontalAlignment="Left" Margin="25,0" Click="RecordButton_Click" Foreground="White"/>
+            <Button x:Name="RecordButton" Content="Record" Width="80" Height="20" Grid.Row="0" BorderBrush="White" Background="#FF4B4B4B" HorizontalAlignment="Left" Margin="25,0,10,0" Click="RecordButton_Click" Foreground="White"/>
+            <CheckBox x:Name="sampleCheckBox" Content="Sample" Width="70" VerticalAlignment="Center" Margin="0,8" Foreground="White"/>
+            <TextBox x:Name="sampleBox" TextWrapping="Wrap" Text="2000" Width="61" VerticalAlignment="Center" Background="#FFB8B8B8"/>
         </StackPanel>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <TextBlock x:Name="frameCountDisplay" TextWrapping="Wrap" Text="0" VerticalAlignment="Center" Margin="10,0,35,0" Foreground="White"/>
             <TextBlock x:Name="FpsDisplay" TextWrapping="Wrap" Text="Fps" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="20,0,10,0" Foreground="White"/>
             <TextBlock x:Name="FpsDisplay2" TextWrapping="Wrap" Text="Fps" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="20,0,10,0" Foreground="White"/>
             <TextBlock x:Name="loggerDisplay" TextWrapping="Wrap" Text="TimeStamp" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="20,0,10,0" Foreground="White"/>
         </StackPanel>
-        
-            <Viewbox HorizontalAlignment="Center" Grid.Row="1">
+
+        <Viewbox HorizontalAlignment="Center" Grid.Row="1">
             <Image x:Name="DisplayScreen" Source="{Binding DepthSource}" Stretch="UniformToFill" OpacityMask="#FFAA6565" MinHeight="26" MinWidth="26" MouseLeftButtonUp="DisplayScreen_MouseLeftButtonUp"/>
         </Viewbox>
         <Separator HorizontalAlignment="Stretch" Height="1" VerticalAlignment="Bottom" Grid.Row="0" Margin="0,1"/>

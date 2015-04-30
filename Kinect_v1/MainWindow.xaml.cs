@@ -72,6 +72,7 @@ namespace Kinect_v1
         private int taskCounter = 0;
 
         private bool _recordEnabled;
+        private int framecount = 0;
 
         private bool markdepth = false;
 
@@ -269,7 +270,25 @@ namespace Kinect_v1
 
             // add to log if recording
             if (_recordEnabled)
+            {
                 _logger.appendLogline(inputCoords.getCamCoordsFloat(), _colorFrameCaptureTimeSpan);
+                framecount++;
+
+                //////////////////// SAMPLE ABORT //////////////////////////
+                if (framecount >= Convert.ToInt32(sampleBox.Text))
+                    if ((bool)sampleCheckBox.IsChecked)
+                    {
+                        {
+                            _recordEnabled = false;
+                            _logger.dumpToFile();
+                            _logger.clear();
+                            RecordButton.Background = System.Windows.Media.Brushes.SlateGray;
+                            RecordButton.Content = "Record";
+                        }
+                    }
+                /////////////////////////////////////////////////////////////
+            }
+
 
             // 
             _coordinates = inputCoords;
@@ -431,6 +450,8 @@ namespace Kinect_v1
                 bitmapGraphics.DrawString("X:  " + _coordinates.getCamCoordsFloat()[0].ToString("#0.000"), new Font(new System.Drawing.FontFamily("Arial"), 18), Brushes.LawnGreen, new RectangleF(new Point(10, 10), new System.Drawing.Size(200, 40)));
                 bitmapGraphics.DrawString("Y:  " + _coordinates.getCamCoordsFloat()[1].ToString("#0.000"), new Font(new System.Drawing.FontFamily("Arial"), 18), Brushes.LawnGreen, new RectangleF(new Point(10, 50), new System.Drawing.Size(200, 40)));
                 bitmapGraphics.DrawString("Z:  " + _coordinates.getCamCoordsFloat()[2].ToString("#0.000"), new Font(new System.Drawing.FontFamily("Arial"), 18), Brushes.LawnGreen, new RectangleF(new Point(10, 90), new System.Drawing.Size(200, 40)));
+
+                frameCountDisplay.Text = framecount.ToString();
             }
             tempBitmap.Dispose();
         }
@@ -509,6 +530,7 @@ namespace Kinect_v1
                 _logger.newLoggerFile();
                 RecordButton.Background = System.Windows.Media.Brushes.Red;
                 RecordButton.Content = "Recording";
+                framecount = 0;
             }
             else
             {
