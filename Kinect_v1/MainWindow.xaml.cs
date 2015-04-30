@@ -73,6 +73,8 @@ namespace Kinect_v1
 
         private bool _recordEnabled;
 
+        private bool markdepth = false;
+
         public MainWindow()
         {
             _kinectSensor = KinectSensor.GetDefault();
@@ -360,8 +362,8 @@ namespace Kinect_v1
 
         private void RenderDepthPixels()
         {
-            // color target pixel white
-            _depthPixels[(globalret[1] * 512) + globalret[0]] = byte.MaxValue;
+            if (markdepth)
+                _depthPixels[(globalret[1] * 512) + globalret[0]] = byte.MaxValue;
 
             _depthBitmap.WritePixels(
                 new Int32Rect(0, 0, _depthBitmap.PixelWidth, _depthBitmap.PixelHeight),

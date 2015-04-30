@@ -17,8 +17,8 @@ namespace Kinect_v1.Model
         private Image<Gray, Byte> _colorProcessed;// = new Image<Gray, byte>(1920, 1080, new Gray(100));
         private Image<Gray, Byte> _depthImage;// = new Image<Gray, byte>("null_small.png");
 
-        MCvScalar _lowerColorScalar = new MCvScalar(110-2,246-20,173-20);
-        MCvScalar _upperColorScalar = new MCvScalar(110+2,246+20,173+20);
+        MCvScalar _lowerColorScalar = new MCvScalar(110 - 5, 242 - 20, 200 + 50); //145-20);
+        MCvScalar _upperColorScalar = new MCvScalar(110 + 5, 242 + 20, 200 - 50); //145+60);
 
         MCvMoments moments = new MCvMoments();
 
