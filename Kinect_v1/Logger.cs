@@ -41,6 +41,9 @@ namespace Kinect_v1
         {
             mainstring.AppendLine(framecount +"."+coords[0]+"."+coords[1]+"."+coords[2]+"."+timespan);
             framecount ++;
+        
+            //if ((framecount % 100) == 0)
+                System.Diagnostics.Debug.WriteLine("Frames captured: " + framecount);
         }
         public void appendLogline(float[] coords, TimeSpan timespan)
         {
@@ -52,6 +55,9 @@ namespace Kinect_v1
                 timespan);
             
             framecount++;
+
+            if ((framecount % 100) == 0)
+                System.Diagnostics.Debug.WriteLine("Frames captured: " + framecount);
         }
 
         private string createFilePath(string path)

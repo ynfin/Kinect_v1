@@ -267,7 +267,7 @@ namespace Kinect_v1
 
             // add to log if recording
             if (_recordEnabled)
-                _logger.appendLogline(inputCoords.getCamCoordsFloat(), _colorFrameCaptureTimeSpan);  
+                _logger.appendLogline(inputCoords.getCamCoordsFloat(), _colorFrameCaptureTimeSpan);
 
             // 
             _coordinates = inputCoords;
